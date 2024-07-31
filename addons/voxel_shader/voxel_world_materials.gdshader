@@ -156,6 +156,7 @@ void vertex() {
 
 	v_top_indices = vec3(1.0, 4.0, 5.0); //your indices for grass, forest and sand go here. TODO An advanced logic.
 	v_top_weights = vec3(grass_weight, forest_weight, sand_weight);
+	//v_top_weights = vec3(0.0);
 	 //commented out because not necessary in simple 3 weight example, but might be necessary w advanced func
 	//v_top_weights /= max(1.0, v_top_weights.x+v_top_weights.y+v_top_weights.z);
 }
@@ -179,7 +180,7 @@ void fragment() {
     // of the function improves performance a little.
 	vec4 ab[4];
 	vec4 nr[4];
-	float auto_top_weight; //In this implementation we will remove top texture in non-automaterial fragments and use this var
+	float auto_top_weight = 0.0; //In this implementation we will remove top texture in non-automaterial fragments and use this var
 
 
 	//We do some sign flipping to fix textures appearing flipped in negative coordinates
@@ -322,7 +323,7 @@ void fragment() {
 	
 	// If sum of top weights is < 1.0, it should reveal side texture
 	topness *= top_weights.x+top_weights.y+top_weights.z;
-	topness *= auto_top_weight;
+	topness *= max(0.0, auto_top_weight);
 	
 	if (u_depth_blending_layer){
 		vec2 top_weight = get_depth_blended_weights2(vec2(topness, 1.0-topness), vec2(height_top, height_side), 0.1);
