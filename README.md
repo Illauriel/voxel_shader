@@ -46,7 +46,7 @@ Each texture set (side and top) requires two atlas textures:
 
 ### Recommended Tools
 - **Material Maker**: Use for exporting texture maps in Godot-friendly format
-- **HTerrain Texture Tools**: Part of Zylann's HTerrain addon, useful for building atlases from individual textures
+- **HTerrain Texture Tools**: Part of Zylann's [HTerrain addon](https://github.com/Zylann/godot_heightmap_plugin), useful for building atlases from individual textures
 
 ## Usage Tips
 
