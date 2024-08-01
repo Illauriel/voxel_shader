@@ -4,7 +4,7 @@ This shader is designed for use with smooth transvoxel terrains in Zylann's Voxe
 
 ## Installation
 
-While originally stored in the `addons` folder following the convention of Zylann's voxelgame demo, you can place this shader anywhere in your Godot project structure.
+While originally stored in the `addons` folder following the convention of Zylann's voxelgame demo, you can place this shader anywhere in your Godot project structure. The shader uses includes from the voxelgame demo, so you also have to clone or download it and copy the necessary includes into your project.
 
 ## Features
 
