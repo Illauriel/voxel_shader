@@ -37,6 +37,10 @@ uniform float u_specular = 0.5;
 
 uniform bool u_depth_blending_atlas = true;
 uniform bool u_depth_blending_layer = true;
+uniform float u_top_blend_strength : hint_range(0.0, 0.999, 0.01) = 0.5;
+uniform float u_side_blend_strength : hint_range(0.0, 0.999, 0.01) = 0.5;
+uniform float u_layer_blend_strength : hint_range(0.0, 0.999, 0.01) = 0.5;
+
 //group_uniforms voxel;
 
 varying vec3 v_world_pos;
@@ -120,7 +124,7 @@ void vertex() {
 
 	// Weights must be in [0..1] so we divide them
     v_material_weights = decode_8bit_vec4(CUSTOM1.y) / 255.0;
-	
+
 	//This is a crucial step because non-normalized weights cause trouble
 	//The smol number is to ensure there's never a divide by zero
 	v_material_weights /= v_material_weights.x + v_material_weights.y + v_material_weights.z + v_material_weights.w + 0.000001;
@@ -156,13 +160,13 @@ void vertex() {
 
 	v_top_indices = vec3(1.0, 4.0, 5.0); //your indices for grass, forest and sand go here. TODO An advanced logic.
 	v_top_weights = vec3(grass_weight, forest_weight, sand_weight);
-	//v_top_weights = vec3(0.0);
-	 //commented out because not necessary in simple 3 weight example, but might be necessary w advanced func
+
+	//commented out because not necessary in simple 3 weight example, but might be necessary w advanced func
 	//v_top_weights /= max(1.0, v_top_weights.x+v_top_weights.y+v_top_weights.z);
 }
 
 void fragment() {
-	
+
 	NORMAL = get_voxel_normal_view(v_vertex_pos_model, NORMAL, VIEW_MATRIX * MODEL_MATRIX);
 
 	vec3 world_normal = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
@@ -190,7 +194,7 @@ void fragment() {
 
 	for (int i=0; i<4; i++){
 		//might save a few array reads, idk
-		float index = min(v_material_indices[i], 7.0);
+		float index = min(v_material_indices[i], 15.0);
 		if (v_material_indices[i] != 0.0){
 			ab[i] = texture_array_triplanar_scaled(u_side_albedo_array, world_pos, tr_signs, blending, index, u_side_uv_scales[int(index)]);
 			nr[i] = texture_array_triplanar_scaled(u_side_normal_array, world_pos, tr_signs, blending, index, u_side_uv_scales[int(index)]);
@@ -205,9 +209,9 @@ void fragment() {
 			vec4 auto_nr2 = texture_array_triplanar_scaled(u_side_normal_array, world_pos, tr_signs, blending, v_auto_side_indices[2], u_side_uv_scales[int(v_auto_side_indices[2])]);
 
 			vec3 auto_weights = v_auto_side_weights;
-			
+
 			if (u_depth_blending_atlas){
-				get_depth_blended_weights3(v_auto_side_weights, vec3(auto_nr0.a, auto_nr1.a, auto_nr2.a), 0.5);
+				get_depth_blended_weights3(v_auto_side_weights, vec3(auto_nr0.a, auto_nr1.a, auto_nr2.a), u_side_blend_strength);
 			}
 
 			ab[i] = auto_ab0 * auto_weights.x + auto_ab1 * auto_weights.y + auto_ab2 * auto_weights.z;
@@ -215,7 +219,7 @@ void fragment() {
 			auto_top_weight = v_material_weights[i];
 		}
 	}
-	
+
 
 	vec3 albedo_side0 = ab[0].rgb;
     vec3 albedo_side1 = ab[1].rgb;
@@ -239,7 +243,7 @@ void fragment() {
 	float height_top0 = ab_t0.a;
 	float height_top1 = ab_t1.a;
 	float height_top2 = ab_t2.a;
-	
+
 	vec4 nr_t0 = texture_array_triplanar_scaled(u_top_normal_array, world_pos, tr_signs, blending, v_top_indices.x, 1.0);
 	vec4 nr_t1 = texture_array_triplanar_scaled(u_top_normal_array, world_pos, tr_signs, blending, v_top_indices.y, 1.0);
 	vec4 nr_t2 = texture_array_triplanar_scaled(u_top_normal_array, world_pos, tr_signs, blending, v_top_indices.z, 1.0);
@@ -256,10 +260,10 @@ void fragment() {
     // We may add a tiny safety margin so we can afford some degree of error.
     vec4 side_weights = v_material_weights;
 	vec3 top_weights = v_top_weights;
-	
+
 	if (u_depth_blending_atlas) {
-		side_weights = get_depth_blended_weights4(side_weights, vec4(ab[0].a, ab[1].a, ab[2].a, ab[3].a), 0.1);
-		top_weights = get_depth_blended_weights3(v_top_weights, vec3(height_top0, height_top1, height_top2), 0.07);
+		side_weights = get_depth_blended_weights4(side_weights, vec4(ab[0].a, ab[1].a, ab[2].a, ab[3].a), u_side_blend_strength);
+		top_weights = get_depth_blended_weights3(v_top_weights, vec3(height_top0, height_top1, height_top2), u_top_blend_strength);
 	}
 
 
@@ -304,7 +308,7 @@ void fragment() {
 		normal_top1 * top_weights.y +
 		normal_top2 * top_weights.z;
 
-	float rough_top = 
+	float rough_top =
 		rough_top0*top_weights.x +
 		rough_top1*top_weights.y +
 		rough_top2*top_weights.z;
@@ -320,16 +324,16 @@ void fragment() {
 	float topness_min = topness_midlevel - topness_smoothness;
 	float topness_max = topness_midlevel + topness_smoothness;
 	float topness = smoothstep(topness_min, topness_max, world_normal.y);
-	
+
 	// If sum of top weights is < 1.0, it should reveal side texture
 	topness *= top_weights.x+top_weights.y+top_weights.z;
 	topness *= max(0.0, auto_top_weight);
-	
+
 	if (u_depth_blending_layer){
-		vec2 top_weight = get_depth_blended_weights2(vec2(topness, 1.0-topness), vec2(height_top, height_side), 0.1);
+		vec2 top_weight = get_depth_blended_weights2(vec2(topness, 1.0-topness), vec2(height_top, height_side), u_layer_blend_strength);
 		ALBEDO = albedo_top * top_weight.x + albedo_side * top_weight.y;
 		ROUGHNESS = rough_top * top_weight.x + rough_side * top_weight.y;
-		
+
 		NORMAL = (VIEW_MATRIX*vec4(world_normal, 0.0)).xyz;
 		NORMAL_MAP = normal_top * top_weight.x + normal_side * top_weight.y;
 		NORMAL_MAP_DEPTH = 1.0;
