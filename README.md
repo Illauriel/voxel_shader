@@ -14,6 +14,12 @@ While originally stored in the `addons` folder following the convention of Zylan
 - Auto-material functionality for procedural texture application
 - Optional depth blending between top and side textures, and within atlases
 
+#### Upcoming
+- More granular depth blending control
+- Parallax mapping
+- Snow coverage
+- Depth-blended puddles
+
 ## Architecture
 
 The shader employs a dual-layer texturing system, consisting of 'side' textures and 'top' textures, each serving a distinct purpose in creating realistic terrain.
