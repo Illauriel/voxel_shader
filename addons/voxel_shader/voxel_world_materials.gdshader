@@ -31,7 +31,7 @@ uniform sampler2DArray u_top_normal_array : hint_roughness_normal, filter_neares
 group_uniforms;
 
 uniform sampler2D u_blend_noise2d : source_color; // Used to perturb top-side texture mix
-uniform sampler2D u_test_uv_texture : source_color; // You can plug in a checkered texture to test UV mapping
+uniform sampler2DArray u_test_uv_texture : source_color, filter_nearest_mipmap; // You can plug in a checkered texture to test UV mapping
 
 uniform float u_specular = 0.5;
 
@@ -369,7 +369,7 @@ void fragment() {
 	#endif
 	#ifdef DEBUG_MODE_TEXTURE
 
-			ALBEDO = COLOR.rgb;
+			ALBEDO = texture_array_triplanar_scaled(u_test_uv_texture, world_pos, tr_signs, blending, 0.0, 1.0).rgb;
 			NORMAL = world_normal;
 			ROUGHNESS = 0.7;
 	#endif
