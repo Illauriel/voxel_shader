@@ -1,0 +1,45 @@
+[gd_scene load_steps=4 format=3 uid="uid://ntibc08j0tdd"]
+
+[ext_resource type="Material" uid="uid://fv5hfb4vs442" path="res://example/example_voxel_terrain_material.tres" id="1_1y0u7"]
+
+[sub_resource type="VoxelGeneratorGraph" id="VoxelGeneratorGraph_qjmfm"]
+graph_data = {
+"connections": [[5, 0, 4, 0], [2, 0, 5, 0]],
+"nodes": {
+"1": {
+"gui_position": Vector2(440, 50),
+"type": "InputX"
+},
+"2": {
+"gui_position": Vector2(440, 150),
+"type": "InputY"
+},
+"3": {
+"gui_position": Vector2(440, 250),
+"type": "InputZ"
+},
+"4": {
+"auto_connect": true,
+"gui_position": Vector2(720, 150),
+"type": "OutputSDF"
+},
+"5": {
+"auto_connect": true,
+"gui_position": Vector2(560, 150),
+"height": 0.0,
+"type": "SdfPlane"
+}
+},
+"version": 2
+}
+
+[sub_resource type="VoxelMesherTransvoxel" id="VoxelMesherTransvoxel_h2nts"]
+texturing_mode = 1
+
+[node name="Node" type="Node"]
+
+[node name="VoxelTerrain" type="VoxelTerrain" parent="."]
+generator = SubResource("VoxelGeneratorGraph_qjmfm")
+mesher = SubResource("VoxelMesherTransvoxel_h2nts")
+gi_mode = 1
+material_override = ExtResource("1_1y0u7")
