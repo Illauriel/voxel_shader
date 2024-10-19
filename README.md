@@ -6,6 +6,9 @@ This shader is designed for use with smooth transvoxel terrains in Zylann's Voxe
 
 While originally stored in the `addons` folder following the convention of Zylann's voxelgame demo, you can place this shader anywhere in your Godot project structure. The shader uses includes from the voxelgame demo, so you also have to clone or download it and copy the necessary includes into your project.
 
+There's an example of setting up the material on VoxelTerrain included in the repository. All textures used in atlases are CC0, taken from <https://ambientcg.com/>.
+For the example to work out of the box, copy the *zylann.voxel* folder from [voxelgame demo](https://github.com/Zylann/voxelgame) into *addons* subfolder of your test project 
+
 ## Features
 
 - Dual texture atlas system: separate sets for 'side' and 'top' textures
@@ -15,10 +18,11 @@ While originally stored in the `addons` folder following the convention of Zylan
 - Optional depth blending between top and side textures, and within atlases
 
 #### Upcoming
+- A minimal PBR shader example (current one is too performance intensive, and will include features unneeded if you don't use dynamic weather or procedural texturing)
 - More granular depth blending control
-- Parallax mapping
-- Snow coverage
-- Depth-blended puddles
+- Dynamic snow coverage (displacement may look weird until we get some kind of tesselation in Godot)
+- Depth-blended puddles (droplet animations are a bit of a problem so far)
+- Parallax mapping (likely not happening unless I find a good example or paper on its usage with triplanar)
 
 ## Architecture
 
