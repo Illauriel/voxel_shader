@@ -9,6 +9,8 @@ While originally stored in the `addons` folder following the convention of Zylan
 There's an example of setting up the material on VoxelTerrain included in the repository. All textures used in atlases are CC0, taken from <https://ambientcg.com/>.
 For the example to work out of the box, copy the *zylann.voxel* folder from [voxelgame demo](https://github.com/Zylann/voxelgame) into *addons* subfolder of your test project 
 
+NOTE: If you want to change shader parameters dynamically, the setup would be different between VoxelTerrain and VoxelLodTerrain, because of the implementation differences. I will try to include a LOD setup example later, but in short: you will have to use global shader uniforms, instead of setting values directly in material.
+
 ## Features
 
 - Dual texture atlas system: separate sets for 'side' and 'top' textures
