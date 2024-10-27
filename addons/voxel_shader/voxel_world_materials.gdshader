@@ -17,6 +17,7 @@ render_mode blend_mix,depth_draw_opaque,cull_back,diffuse_burley,specular_schlic
 
 group_uniforms side_texture;
 uniform float u_side_uv_scales[16];
+uniform float u_side_roughness_scale = 1.0;
 uniform sampler2DArray u_side_albedo_array : source_color, filter_nearest_mipmap;
 uniform sampler2DArray u_side_normal_array : hint_roughness_normal, filter_nearest_mipmap;
 
@@ -26,6 +27,7 @@ uniform float top_normal_affect : hint_range(-0.2, 0.2, 0.01) = 0.0;
 uniform float top_depth_affect : hint_range(0.0, 0.2, 0.01) = 0.0;
 uniform float top_noise_affect : hint_range(-0.2, 0.2, 0.01) = 0.0;
 uniform float u_top_uv_scales[16];
+uniform float u_top_roughness_scale = 1.0;
 uniform sampler2DArray u_top_texture_array : source_color, filter_nearest_mipmap;
 uniform sampler2DArray u_top_normal_array : hint_roughness_normal, filter_nearest_mipmap;
 group_uniforms;
@@ -292,6 +294,8 @@ void fragment() {
 		nr[1].a * side_weights.g +
 		nr[2].a * side_weights.b +
 		nr[3].a * side_weights.a;
+		
+	rough_side *= u_side_roughness_scale;
 
 	// Now colors for top texture
 	vec3 albedo_top =
@@ -313,6 +317,8 @@ void fragment() {
 		rough_top0*top_weights.x +
 		rough_top1*top_weights.y +
 		rough_top2*top_weights.z;
+		
+	rough_top *= u_top_roughness_scale;
 
 
 	// Now blend between top and side textures
