@@ -129,7 +129,7 @@ void vertex() {
 	//The smol number is to ensure there's never a divide by zero
 	v_material_weights /= v_material_weights.x + v_material_weights.y + v_material_weights.z + v_material_weights.w + 0.000001;
 
-	v_auto_side_indices = vec3(1.0, 2.0, 5.0);
+	v_auto_side_indices = vec3(1.01, 2.01, 5.01); //Always add small margin to avoid rounding errors.
 
 	//Automaterial function for side texture goes here
 	v_auto_side_weights[0] = smoothstep(100.0, 150.0, v_world_pos.y); //cliff
@@ -158,7 +158,7 @@ void vertex() {
 	float sand_weight =  1.0-smoothstep(5.0, 8.0, v_world_pos.y);
 	float ice_weight;
 
-	v_top_indices = vec3(1.0, 4.0, 5.0); //your indices for grass, forest and sand go here. TODO An advanced logic.
+	v_top_indices = vec3(1.01, 4.01, 5.01); //your indices for grass, forest and sand go here. Small margin to avoid errors. TODO An advanced logic.
 	v_top_weights = vec3(grass_weight, forest_weight, sand_weight);
 
 	//commented out because not necessary in simple 3 weight example, but might be necessary w advanced func
@@ -231,10 +231,11 @@ void fragment() {
 	vec3 normal_side2 = nr[2].rgb;
 	vec3 normal_side3 = nr[3].rgb;
 
+
 	//Top texture sampling
-	vec4 ab_t0 = texture_array_triplanar_scaled(u_top_texture_array, world_pos, tr_signs, blending, v_top_indices.x, 1.0);
-	vec4 ab_t1 = texture_array_triplanar_scaled(u_top_texture_array, world_pos, tr_signs, blending, v_top_indices.y, 1.0);
-	vec4 ab_t2 = texture_array_triplanar_scaled(u_top_texture_array, world_pos, tr_signs, blending, v_top_indices.z, 1.0);
+	vec4 ab_t0 = texture_array_triplanar_scaled(u_top_texture_array, world_pos, tr_signs, blending, v_top_indices.x, u_top_uv_scales[int(v_top_indices.x)]);
+	vec4 ab_t1 = texture_array_triplanar_scaled(u_top_texture_array, world_pos, tr_signs, blending, v_top_indices.y, u_top_uv_scales[int(v_top_indices.y)]);
+	vec4 ab_t2 = texture_array_triplanar_scaled(u_top_texture_array, world_pos, tr_signs, blending, v_top_indices.z, u_top_uv_scales[int(v_top_indices.z)]);
 
 	vec3 albedo_top0 = ab_t0.rgb;
 	vec3 albedo_top1 = ab_t1.rgb;
@@ -244,9 +245,9 @@ void fragment() {
 	float height_top1 = ab_t1.a;
 	float height_top2 = ab_t2.a;
 
-	vec4 nr_t0 = texture_array_triplanar_scaled(u_top_normal_array, world_pos, tr_signs, blending, v_top_indices.x, 1.0);
-	vec4 nr_t1 = texture_array_triplanar_scaled(u_top_normal_array, world_pos, tr_signs, blending, v_top_indices.y, 1.0);
-	vec4 nr_t2 = texture_array_triplanar_scaled(u_top_normal_array, world_pos, tr_signs, blending, v_top_indices.z, 1.0);
+	vec4 nr_t0 = texture_array_triplanar_scaled(u_top_normal_array, world_pos, tr_signs, blending, v_top_indices.x, u_top_uv_scales[int(v_top_indices.x)]);
+	vec4 nr_t1 = texture_array_triplanar_scaled(u_top_normal_array, world_pos, tr_signs, blending, v_top_indices.y, u_top_uv_scales[int(v_top_indices.y)]);
+	vec4 nr_t2 = texture_array_triplanar_scaled(u_top_normal_array, world_pos, tr_signs, blending, v_top_indices.z, u_top_uv_scales[int(v_top_indices.z)]);
 
 	vec3 normal_top0 = nr_t0.rgb;
 	vec3 normal_top1 = nr_t1.rgb;
