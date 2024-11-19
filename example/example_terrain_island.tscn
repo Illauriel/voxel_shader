@@ -1,0 +1,98 @@
+[gd_scene load_steps=10 format=3 uid="uid://c7eaxgwlavovq"]
+
+[ext_resource type="Material" uid="uid://fv5hfb4vs442" path="res://example/example_voxel_terrain_material.tres" id="1_5jwvh"]
+[ext_resource type="VoxelGeneratorGraph" uid="uid://djmi511lphdk2" path="res://example/voxel_generator_island.tres" id="1_hx4qf"]
+[ext_resource type="Script" path="res://temp/camera_3d.gd" id="3_fh02e"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_ofm8m"]
+sky_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+ground_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+
+[sub_resource type="Sky" id="Sky_jmd4m"]
+sky_material = SubResource("ProceduralSkyMaterial_ofm8m")
+
+[sub_resource type="Environment" id="Environment_p1v7w"]
+background_mode = 2
+sky = SubResource("Sky_jmd4m")
+tonemap_mode = 2
+ssao_enabled = true
+sdfgi_enabled = true
+glow_enabled = true
+
+[sub_resource type="VoxelMesherTransvoxel" id="VoxelMesherTransvoxel_wtbhi"]
+texturing_mode = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ok248"]
+depth_draw_mode = 1
+albedo_color = Color(3.1285e-06, 0.448198, 0.568116, 0.576471)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_o8b65"]
+material = SubResource("StandardMaterial3D_ok248")
+size = Vector2(1024, 1024)
+
+[node name="Node" type="Node"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_p1v7w")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.866025, -0.0833844, 0.492998, 0, 0.985996, 0.166769, -0.5, 0.144426, -0.853898, 0, 0, 0)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.73373, 0.492849, -0.467697, 0, 0.688355, 0.725374, 0.679441, -0.532229, 0.505066, -247.482, 181.46, 309.486)
+script = ExtResource("3_fh02e")
+
+[node name="VoxelViewer" type="VoxelViewer" parent="Camera3D"]
+
+[node name="VoxelLodTerrain" type="VoxelLodTerrain" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.533905, 0, -0.432816)
+generator = ExtResource("1_hx4qf")
+mesher = SubResource("VoxelMesherTransvoxel_wtbhi")
+material = ExtResource("1_5jwvh")
+
+[node name="Sea" type="Node3D" parent="."]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Sea"]
+mesh = SubResource("PlaneMesh_o8b65")
+skeleton = NodePath("../..")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="Sea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1024)
+mesh = SubResource("PlaneMesh_o8b65")
+skeleton = NodePath("../..")
+
+[node name="MeshInstance3D3" type="MeshInstance3D" parent="Sea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1024)
+mesh = SubResource("PlaneMesh_o8b65")
+skeleton = NodePath("../..")
+
+[node name="MeshInstance3D4" type="MeshInstance3D" parent="Sea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1024, 0, 0)
+mesh = SubResource("PlaneMesh_o8b65")
+skeleton = NodePath("../..")
+
+[node name="MeshInstance3D5" type="MeshInstance3D" parent="Sea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1024, 0, 1024)
+mesh = SubResource("PlaneMesh_o8b65")
+skeleton = NodePath("../..")
+
+[node name="MeshInstance3D6" type="MeshInstance3D" parent="Sea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1024, 0, -1024)
+mesh = SubResource("PlaneMesh_o8b65")
+skeleton = NodePath("../..")
+
+[node name="MeshInstance3D7" type="MeshInstance3D" parent="Sea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1024, 0, 0)
+mesh = SubResource("PlaneMesh_o8b65")
+skeleton = NodePath("../..")
+
+[node name="MeshInstance3D8" type="MeshInstance3D" parent="Sea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1024, 0, 1024)
+mesh = SubResource("PlaneMesh_o8b65")
+skeleton = NodePath("../..")
+
+[node name="MeshInstance3D9" type="MeshInstance3D" parent="Sea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1024, 0, -1024)
+mesh = SubResource("PlaneMesh_o8b65")
+skeleton = NodePath("../..")

@@ -1,32 +1,50 @@
-[gd_resource type="ShaderMaterial" load_steps=6 format=3 uid="uid://fv5hfb4vs442"]
+[gd_resource type="ShaderMaterial" load_steps=9 format=3 uid="uid://fv5hfb4vs442"]
 
 [ext_resource type="Shader" path="res://addons/voxel_shader/voxel_world_materials.gdshader" id="1_wfcxj"]
 [ext_resource type="CompressedTexture2DArray" uid="uid://c4ygamkts0inx" path="res://example/textures/albedo_atlas_side_real.png" id="2_1bifh"]
 [ext_resource type="CompressedTexture2DArray" uid="uid://d15u4r7kxiaon" path="res://example/textures/normal_atlas_side_real.png" id="3_ofxah"]
 [ext_resource type="CompressedTexture2DArray" uid="uid://djjcraxs24421" path="res://example/textures/normal_atlas_top_real.png" id="4_hw7ch"]
+[ext_resource type="CompressedTexture2DArray" uid="uid://524axe1gxgd6" path="res://example/textures/CustomUVChecker_byValle_1K.png" id="4_q674u"]
 [ext_resource type="CompressedTexture2DArray" uid="uid://w1g8ehtrjqj4" path="res://example/textures/albedo_atlas_top_real.png" id="5_4p22t"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_vi21q"]
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_ijvh7"]
+seamless = true
+noise = SubResource("FastNoiseLite_vi21q")
 
 [resource]
 render_priority = 0
 shader = ExtResource("1_wfcxj")
 shader_parameter/u_transition_mask = null
+shader_parameter/u_voxel_virtual_texture_tile_size = null
 shader_parameter/u_voxel_virtual_texture_fade = null
 shader_parameter/u_voxel_cell_size = null
 shader_parameter/u_voxel_block_size = null
 shader_parameter/u_voxel_virtual_texture_offset_scale = null
 shader_parameter/u_lod_fade = null
-shader_parameter/u_specular = 0.5
-shader_parameter/u_depth_blending_atlas = true
-shader_parameter/u_depth_blending_layer = true
-shader_parameter/u_top_blend_strength = 0.5
-shader_parameter/u_side_blend_strength = 0.5
-shader_parameter/u_layer_blend_strength = 0.5
 shader_parameter/u_side_uv_scales = PackedFloat32Array(0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3)
+shader_parameter/u_side_roughness_scale = 1.5
 shader_parameter/u_side_albedo_array = ExtResource("2_1bifh")
 shader_parameter/u_side_normal_array = ExtResource("3_ofxah")
-shader_parameter/top_normal_affect = -0.02
-shader_parameter/top_depth_affect = 0.02
-shader_parameter/top_noise_affect = -0.04
+shader_parameter/top_normal_affect = 0.2
+shader_parameter/top_depth_affect = 0.08
+shader_parameter/top_noise_affect = 0.12
+shader_parameter/blend_smoothness = 0.4
 shader_parameter/u_top_uv_scales = PackedFloat32Array(0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3)
+shader_parameter/u_top_roughness_scale = 1.55
 shader_parameter/u_top_texture_array = ExtResource("5_4p22t")
 shader_parameter/u_top_normal_array = ExtResource("4_hw7ch")
+shader_parameter/u_blend_noise_scale_coarse = 0.001
+shader_parameter/u_blend_noise_scale_medium = 0.01
+shader_parameter/u_blend_noise_scale_fine = 0.1
+shader_parameter/u_specular = 0.5
+shader_parameter/u_normalmap_depth = 1.0
+shader_parameter/u_triplanar_sharpness = 8.0
+shader_parameter/u_depth_blending_atlas = true
+shader_parameter/u_depth_blending_layer = true
+shader_parameter/u_top_blend_strength = 0.221
+shader_parameter/u_side_blend_strength = 0.5
+shader_parameter/u_layer_blend_strength = 0.5
+shader_parameter/u_blend_noise2d = SubResource("NoiseTexture2D_ijvh7")
+shader_parameter/u_test_uv_texture = ExtResource("4_q674u")

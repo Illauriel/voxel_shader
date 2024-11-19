@@ -1,6 +1,21 @@
-[gd_scene load_steps=4 format=3 uid="uid://ntibc08j0tdd"]
+[gd_scene load_steps=7 format=3 uid="uid://ntibc08j0tdd"]
 
 [ext_resource type="Material" uid="uid://fv5hfb4vs442" path="res://example/example_voxel_terrain_material.tres" id="1_1y0u7"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_ofm8m"]
+sky_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+ground_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+
+[sub_resource type="Sky" id="Sky_jmd4m"]
+sky_material = SubResource("ProceduralSkyMaterial_ofm8m")
+
+[sub_resource type="Environment" id="Environment_p1v7w"]
+background_mode = 2
+sky = SubResource("Sky_jmd4m")
+tonemap_mode = 2
+ssao_enabled = true
+sdfgi_enabled = true
+glow_enabled = true
 
 [sub_resource type="VoxelGeneratorGraph" id="VoxelGeneratorGraph_qjmfm"]
 graph_data = {
@@ -38,8 +53,20 @@ texturing_mode = 1
 
 [node name="Node" type="Node"]
 
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_p1v7w")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.866025, -0.0833844, 0.492998, 0, 0.985996, 0.166769, -0.5, 0.144426, -0.853898, 0, 0, 0)
+shadow_enabled = true
+
 [node name="VoxelTerrain" type="VoxelTerrain" parent="."]
 generator = SubResource("VoxelGeneratorGraph_qjmfm")
 mesher = SubResource("VoxelMesherTransvoxel_h2nts")
 gi_mode = 1
 material_override = ExtResource("1_1y0u7")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -0.0744566, 0.997224, 0, -0.997224, -0.0744566, 0, 2.026, 0)
+
+[node name="VoxelViewer" type="VoxelViewer" parent="Camera3D"]
