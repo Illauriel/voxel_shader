@@ -26,6 +26,8 @@ group_uniforms top_texture;
 uniform float top_normal_affect : hint_range(-0.2, 0.2, 0.01) = 0.0;
 uniform float top_depth_affect : hint_range(0.0, 0.2, 0.01) = 0.0;
 uniform float top_noise_affect : hint_range(-0.2, 0.2, 0.01) = 0.0;
+uniform float blend_smoothness : hint_range(0.0, 3.0, 0.01) = 0.4;
+
 uniform float u_top_uv_scales[16];
 uniform float u_top_roughness_scale = 1.0;
 uniform sampler2DArray u_top_texture_array : source_color, filter_nearest_mipmap;
@@ -33,20 +35,30 @@ uniform sampler2DArray u_top_normal_array : hint_roughness_normal, filter_neares
 group_uniforms;
 
 uniform sampler2D u_blend_noise2d : source_color; // Used to perturb top-side texture mix
+uniform float u_blend_noise_scale_coarse = 0.001;
+uniform float u_blend_noise_scale_medium = 0.01;
+uniform float u_blend_noise_scale_fine = 0.1;
+
 uniform sampler2DArray u_test_uv_texture : source_color, filter_nearest_mipmap; // You can plug in a checkered texture to test UV mapping
 
 uniform float u_specular = 0.5;
 
+uniform float u_normalmap_depth : hint_range(-5.0, 5.0, 0.01) = 1.0;
+
+uniform float u_triplanar_sharpness : hint_range(0.0, 155.0, 0.01) = 8.0;
+
 uniform bool u_depth_blending_atlas = true;
 uniform bool u_depth_blending_layer = true;
-uniform float u_top_blend_strength : hint_range(0.0, 0.999, 0.01) = 0.5;
-uniform float u_side_blend_strength : hint_range(0.0, 0.999, 0.01) = 0.5;
-uniform float u_layer_blend_strength : hint_range(0.0, 0.999, 0.01) = 0.5;
+uniform float u_top_blend_strength : hint_range(0.001, 0.999, 0.01) = 0.5;
+uniform float u_side_blend_strength : hint_range(0.001, 0.999, 0.01) = 0.5;
+uniform float u_layer_blend_strength : hint_range(0.001, 0.999, 0.01) = 0.5;
 
 //group_uniforms voxel;
 
 varying vec3 v_world_pos;
 varying vec3 v_vertex_pos_model;
+
+varying vec3 v_triplanar_blend;
 
 varying vec4 v_material_indices;
 varying vec4 v_material_weights;
@@ -87,7 +99,7 @@ vec3 get_depth_blended_weights3(vec3 weights, vec3 heights, float amount) {
 	float max_h = max(max(h.r, h.g), h.b) - amount;
 	vec3 d = max(h-max_h, vec3(0.0));
 
-	return d / (d.r+d.g+d.b)*(weights.r+weights.g+weights.b);
+	return d / (d.r + d.g + d.b) * (weights.r + weights.g + weights.b);
 }
 
 vec2 get_depth_blended_weights2(vec2 weights, vec2 heights, float amount) {
@@ -120,8 +132,10 @@ void vertex() {
 	//We'll need this later in Fragment. It's better to calculate it here
 	v_world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 
+	//Calculating triplanar blend factor is moved here for optimization
+	v_triplanar_blend = get_triplanar_blend(normal, u_triplanar_sharpness);
 
-	 // Indices are integer values so we can decode them as-is
+	// Indices are integer values so we can decode them as-is
     v_material_indices = decode_8bit_vec4(CUSTOM1.x);
 
 	// Weights must be in [0..1] so we divide them
@@ -131,12 +145,12 @@ void vertex() {
 	//The smol number is to ensure there's never a divide by zero
 	v_material_weights /= v_material_weights.x + v_material_weights.y + v_material_weights.z + v_material_weights.w + 0.000001;
 
-	v_auto_side_indices = vec3(1.01, 2.01, 5.01); //Always add small margin to avoid rounding errors.
+	v_auto_side_indices = vec3(8.01, 3.01, 5.01); //Always add small margin to avoid rounding errors.
 
 	//Automaterial function for side texture goes here
-	v_auto_side_weights[0] = smoothstep(100.0, 150.0, v_world_pos.y); //cliff
+	v_auto_side_weights[0] = smoothstep(10.0, 15.0, v_world_pos.y); //cliff
 
-	v_auto_side_weights[2] = 1.0-smoothstep(5.0, 8.0, v_world_pos.y); //sand
+	v_auto_side_weights[2] = 1.0-smoothstep(2.0, 2.5, v_world_pos.y); //sand
 
 	v_auto_side_weights[1] = 1.0-v_auto_side_weights[2]-v_auto_side_weights[0]; //dirt
 
@@ -148,19 +162,13 @@ void vertex() {
 
 	//Automaterial logic for top tex choice goes here
 
-	//Test implementation places textures in 4 quadrants around world origin
-	//float grass_weight = smoothstep(-2.0, 2.0, v_world_pos.x)*smoothstep(-2.0, 2.0, v_world_pos.z);
-	//float moss_weight = smoothstep(2.0, -2.0, v_world_pos.x)*smoothstep(2.0, -2.0, v_world_pos.z);
-	//float forest_weight =  smoothstep(-2.0, 2.0, v_world_pos.x)*smoothstep(2.0, -2.0, v_world_pos.z);
-	//float sand_weight =  smoothstep(2.0, -2.0, v_world_pos.x)*smoothstep(2.0, -2.0, v_world_pos.z);
-
 	//Very simple height-based side texture placement
-	float grass_weight = smoothstep(5.0, 8.0, v_world_pos.y)- smoothstep(100.0, 150.0, v_world_pos.y);
-	float forest_weight =  smoothstep(100.0, 150.0, v_world_pos.y);
-	float sand_weight =  1.0-smoothstep(5.0, 8.0, v_world_pos.y);
+	float grass_weight = smoothstep(2.0, 2.5, v_world_pos.y) - smoothstep(20.0, 30.0, v_world_pos.y);
+	float forest_weight =  smoothstep(20.0, 30.0, v_world_pos.y);
+	float sand_weight =  1.0-smoothstep(2.0, 2.5, v_world_pos.y);
 	float ice_weight;
 
-	v_top_indices = vec3(1.01, 4.01, 5.01); //your indices for grass, forest and sand go here. Small margin to avoid errors. TODO An advanced logic.
+	v_top_indices = vec3(0.01, 1.01, 5.01); //your indices for grass, forest and sand go here. Small margin to avoid errors. TODO An advanced logic.
 	v_top_weights = vec3(grass_weight, forest_weight, sand_weight);
 
 	//commented out because not necessary in simple 3 weight example, but might be necessary w advanced func
@@ -175,12 +183,16 @@ void fragment() {
 	vec3 world_pos = v_world_pos;
 
 	// can be used for distance fading of larger UVs and the like
-	float dist = length((INV_VIEW_MATRIX*vec4(VERTEX, 1.0)).xyz-CAMERA_POSITION_WORLD);
+	float dist = length(world_pos-CAMERA_POSITION_WORLD);
 
 	//How much of an overlap the three projected textures have
-	float triplanar_sharpness = 8.0;
-	vec3 blending = get_triplanar_blend(world_normal, triplanar_sharpness);
+	vec3 blending = v_triplanar_blend;
 
+	//Sample noise at various scales to use for more texture variation.
+	float blend_noise_fine = texture(u_blend_noise2d,world_pos.xz*u_blend_noise_scale_fine).r;
+	float blend_noise = texture(u_blend_noise2d,world_pos.xz*u_blend_noise_scale_medium).r;
+	float blend_noise_coarse = texture(u_blend_noise2d,world_pos.xz*u_blend_noise_scale_coarse).r;
+	
 	// Sample the 4 blending textures, all with triplanar mapping.
     // We can re-use the same triplanar blending factors for all of them so separating that part
     // of the function improves performance a little.
@@ -263,10 +275,19 @@ void fragment() {
     // We may add a tiny safety margin so we can afford some degree of error.
     vec4 side_weights = v_material_weights;
 	vec3 top_weights = v_top_weights;
+	
+	// Add noise to make grass/sand transition less boring
+	float perturb = (blend_noise_fine * 2.0 - 1.0)*0.2;
+
+	top_weights.x = min(top_weights.x+perturb, 1.0);
+	top_weights.z = max(top_weights.z-perturb, 0.0);
+	
+	top_weights /= (top_weights.x + top_weights.y + top_weights.z);
+	
 
 	if (u_depth_blending_atlas) {
 		side_weights = get_depth_blended_weights4(side_weights, vec4(ab[0].a, ab[1].a, ab[2].a, ab[3].a), u_side_blend_strength);
-		top_weights = get_depth_blended_weights3(v_top_weights, vec3(height_top0, height_top1, height_top2), u_top_blend_strength);
+		top_weights = get_depth_blended_weights3(top_weights, vec3(height_top0, height_top1, height_top2), u_top_blend_strength);
 	}
 
 
@@ -294,7 +315,7 @@ void fragment() {
 		nr[1].a * side_weights.g +
 		nr[2].a * side_weights.b +
 		nr[3].a * side_weights.a;
-		
+
 	rough_side *= u_side_roughness_scale;
 
 	// Now colors for top texture
@@ -317,17 +338,14 @@ void fragment() {
 		rough_top0*top_weights.x +
 		rough_top1*top_weights.y +
 		rough_top2*top_weights.z;
-		
+
 	rough_top *= u_top_roughness_scale;
 
 
 	// Now blend between top and side textures
-	float blend_noise_sm = texture(u_blend_noise2d,world_pos.xz*0.1).r;
-	float blend_noise = texture(u_blend_noise2d,world_pos.xz*0.01).r;
-	float blend_noise_coarse = texture(u_blend_noise2d,world_pos.xz*0.001).r;
 
-	float topness_midlevel = 0.5+top_normal_affect+top_depth_affect*(height_side-height_top)+top_noise_affect*blend_noise_sm;
-	float topness_smoothness = 0.04;
+	float topness_midlevel = 0.5+top_normal_affect+top_depth_affect*(height_side-height_top)+top_noise_affect*blend_noise_fine;
+	float topness_smoothness = blend_smoothness * 0.1;
 	float topness_min = topness_midlevel - topness_smoothness;
 	float topness_max = topness_midlevel + topness_smoothness;
 	float topness = smoothstep(topness_min, topness_max, world_normal.y);
@@ -343,7 +361,7 @@ void fragment() {
 
 		NORMAL = (VIEW_MATRIX*vec4(world_normal, 0.0)).xyz;
 		NORMAL_MAP = normal_top * top_weight.x + normal_side * top_weight.y;
-		NORMAL_MAP_DEPTH = 1.0;
+		NORMAL_MAP_DEPTH = u_normalmap_depth;
 	}
 	else{
 	    ALBEDO = mix(albedo_side, albedo_top, topness);
@@ -358,7 +376,7 @@ void fragment() {
 
 		NORMAL = (VIEW_MATRIX*vec4(world_normal, 0.0)).xyz;
 		NORMAL_MAP = mix(normal_side, normal_top, topness);
-		NORMAL_MAP_DEPTH = 1.0;
+		NORMAL_MAP_DEPTH = u_normalmap_depth;
 	}
 
 
@@ -366,18 +384,21 @@ void fragment() {
 	#ifdef DEBUG_MODE_NORMAL
 			ALBEDO = ((mat3(INV_VIEW_MATRIX) * NORMAL * vec3(1.0,1.0,1.0)));
 			NORMAL = (VIEW_MATRIX*vec4(world_normal, 0.0)).xyz;
+			NORMAL_MAP_DEPTH = 0.0;
 			ROUGHNESS = 0.7;
 	#endif
 	#ifdef DEBUG_MODE_VERTEX
 
 			ALBEDO = COLOR.rgb;
 			NORMAL = world_normal;
+			NORMAL_MAP_DEPTH = 0.0;
 			ROUGHNESS = 0.7;
 	#endif
 	#ifdef DEBUG_MODE_TEXTURE
 
 			ALBEDO = texture_array_triplanar_scaled(u_test_uv_texture, world_pos, tr_signs, blending, 0.0, 1.0).rgb;
-			NORMAL = world_normal;
+			NORMAL = (VIEW_MATRIX*vec4(world_normal, 0.0)).xyz;
+			NORMAL_MAP_DEPTH = 0.0;
 			ROUGHNESS = 0.7;
 	#endif
 
