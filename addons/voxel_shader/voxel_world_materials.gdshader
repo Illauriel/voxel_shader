@@ -11,6 +11,8 @@ render_mode blend_mix,depth_draw_opaque,cull_back,diffuse_burley,specular_schlic
 #include "res://addons/zylann.voxel/shaders/virtual_texturing.gdshaderinc"
 #include "res://addons/zylann.voxel/shaders/triplanar.gdshaderinc"
 #include "res://addons/voxel_shader/triplanar_scaled.gdshaderinc"
+#include "res://addons/voxel_shader/texturing_height_lib.gdshaderinc"
+#include "res://addons/voxel_shader/depth_blending_lib.gdshaderinc"
 #include "res://addons/zylann.voxel/shaders/lod_fade.gdshaderinc"
 #include "res://addons/zylann.voxel/shaders/voxel_texturing.gdshaderinc"
 
@@ -47,11 +49,6 @@ uniform float u_normalmap_depth : hint_range(-5.0, 5.0, 0.01) = 1.0;
 
 uniform float u_triplanar_sharpness : hint_range(0.0, 155.0, 0.01) = 8.0;
 
-uniform bool u_depth_blending_atlas = true;
-uniform bool u_depth_blending_layer = true;
-uniform float u_top_blend_strength : hint_range(0.001, 0.999, 0.01) = 0.5;
-uniform float u_side_blend_strength : hint_range(0.001, 0.999, 0.01) = 0.5;
-uniform float u_layer_blend_strength : hint_range(0.001, 0.999, 0.01) = 0.5;
 
 //group_uniforms voxel;
 
@@ -68,47 +65,6 @@ varying vec3 v_auto_side_weights;
 
 varying vec3 v_top_indices;
 varying vec3 v_top_weights;
-
-
-// taken from https://github.com/Zylann/godot_heightmap_plugin/blob/master/addons/zylann.hterrain/shaders/multisplat16.gdshader
-// Turned out to not be that necessary if we use builtin NORMAL_MAP frag input
-vec3 unpack_normal(vec4 rgba) {
-	// If we consider texture space starts from top-left corner and Y goes down,
-	// then Y+ in pixel space corresponds to Z+ in terrain space,
-	// while X+ also corresponds to X+ in terrain space.
-	vec3 n = rgba.xzy * 2.0 - vec3(1.0);
-	// Had to negate Z because it comes from Y in the normal map,
-	// and OpenGL-style normal maps are Y-up.
-	n.z *= -1.0;
-	return n;
-}
-
-// Returns weights modified according to material's bump map. Amount controls strength of this effect.
-// This implementation is different than one found in HTerrain shader
-// Function comes in 3 versions for diff number of inputs
-vec4 get_depth_blended_weights4(vec4 weights, vec4 heights, float amount) {
-	vec4 h = weights + heights * weights;
-	float max_h = max(max(max(h.r, h.g), h.b), h.a) - amount;
-	vec4 d = max(h - max_h, vec4(0.0));
-
-	return d / (d.r + d.g + d.b + d.a) * (weights.r + weights.g + weights.b + weights.a);
-}
-
-vec3 get_depth_blended_weights3(vec3 weights, vec3 heights, float amount) {
-	vec3 h = weights+heights*weights;
-	float max_h = max(max(h.r, h.g), h.b) - amount;
-	vec3 d = max(h-max_h, vec3(0.0));
-
-	return d / (d.r + d.g + d.b) * (weights.r + weights.g + weights.b);
-}
-
-vec2 get_depth_blended_weights2(vec2 weights, vec2 heights, float amount) {
-	vec2 h = weights + heights * weights;
-	float max_h = max(h.r, h.g) - amount;
-	vec2 d = max(h - max_h, vec2(0.0));
-
-	return d / (d.r + d.g) * (weights.r + weights.g);
-}
 
 
 void vertex() {
@@ -145,31 +101,18 @@ void vertex() {
 	//The smol number is to ensure there's never a divide by zero
 	v_material_weights /= v_material_weights.x + v_material_weights.y + v_material_weights.z + v_material_weights.w + 0.000001;
 
-	v_auto_side_indices = vec3(8.01, 3.01, 5.01); //Always add small margin to avoid rounding errors.
-
 	//Automaterial function for side texture goes here
-	v_auto_side_weights[0] = smoothstep(10.0, 15.0, v_world_pos.y); //cliff
-
-	v_auto_side_weights[2] = 1.0-smoothstep(2.0, 2.5, v_world_pos.y); //sand
-
-	v_auto_side_weights[1] = 1.0-v_auto_side_weights[2]-v_auto_side_weights[0]; //dirt
+	vec3 side_weights;
+	v_auto_side_indices = get_auto_top_index(v_world_pos, side_weights);
+	v_auto_side_weights = side_weights;
 
 	//normalize auto-material weights
 	v_auto_side_weights /= v_auto_side_weights.x+v_auto_side_weights.y+v_auto_side_weights.z+0.0001;
 
-
-
-
 	//Automaterial logic for top tex choice goes here
-
-	//Very simple height-based side texture placement
-	float grass_weight = smoothstep(2.0, 2.5, v_world_pos.y) - smoothstep(20.0, 30.0, v_world_pos.y);
-	float forest_weight =  smoothstep(20.0, 30.0, v_world_pos.y);
-	float sand_weight =  1.0-smoothstep(2.0, 2.5, v_world_pos.y);
-	float ice_weight;
-
-	v_top_indices = vec3(0.01, 1.01, 5.01); //your indices for grass, forest and sand go here. Small margin to avoid errors. TODO An advanced logic.
-	v_top_weights = vec3(grass_weight, forest_weight, sand_weight);
+	vec3 top_weights;
+	v_top_indices = get_top_index(v_world_pos, top_weights);
+	v_top_weights = top_weights;
 
 	//commented out because not necessary in simple 3 weight example, but might be necessary w advanced func
 	//v_top_weights /= max(1.0, v_top_weights.x+v_top_weights.y+v_top_weights.z);
@@ -192,7 +135,7 @@ void fragment() {
 	float blend_noise_fine = texture(u_blend_noise2d,world_pos.xz*u_blend_noise_scale_fine).r;
 	float blend_noise = texture(u_blend_noise2d,world_pos.xz*u_blend_noise_scale_medium).r;
 	float blend_noise_coarse = texture(u_blend_noise2d,world_pos.xz*u_blend_noise_scale_coarse).r;
-	
+
 	// Sample the 4 blending textures, all with triplanar mapping.
     // We can re-use the same triplanar blending factors for all of them so separating that part
     // of the function improves performance a little.
@@ -275,15 +218,15 @@ void fragment() {
     // We may add a tiny safety margin so we can afford some degree of error.
     vec4 side_weights = v_material_weights;
 	vec3 top_weights = v_top_weights;
-	
+
 	// Add noise to make grass/sand transition less boring
 	float perturb = (blend_noise_fine * 2.0 - 1.0)*0.2;
 
 	top_weights.x = min(top_weights.x+perturb, 1.0);
 	top_weights.z = max(top_weights.z-perturb, 0.0);
-	
+
 	top_weights /= (top_weights.x + top_weights.y + top_weights.z);
-	
+
 
 	if (u_depth_blending_atlas) {
 		side_weights = get_depth_blended_weights4(side_weights, vec4(ab[0].a, ab[1].a, ab[2].a, ab[3].a), u_side_blend_strength);
@@ -362,6 +305,7 @@ void fragment() {
 		NORMAL = (VIEW_MATRIX*vec4(world_normal, 0.0)).xyz;
 		NORMAL_MAP = normal_top * top_weight.x + normal_side * top_weight.y;
 		NORMAL_MAP_DEPTH = u_normalmap_depth;
+		SPECULAR = u_specular;
 	}
 	else{
 	    ALBEDO = mix(albedo_side, albedo_top, topness);
