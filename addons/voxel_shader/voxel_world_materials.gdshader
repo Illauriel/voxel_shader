@@ -25,21 +25,28 @@ uniform sampler2DArray u_side_normal_array : hint_roughness_normal, filter_neare
 
 
 group_uniforms top_texture;
-uniform float top_normal_affect : hint_range(-0.2, 0.2, 0.01) = 0.0;
-uniform float top_depth_affect : hint_range(0.0, 0.2, 0.01) = 0.0;
-uniform float top_noise_affect : hint_range(-0.2, 0.2, 0.01) = 0.0;
-uniform float blend_smoothness : hint_range(0.0, 3.0, 0.01) = 0.4;
 
 uniform float u_top_uv_scales[16];
 uniform float u_top_roughness_scale = 1.0;
+
+uniform float top_noise_strength : hint_range(-0.5, 0.5, 0.001) = 0.0;
+uniform float top_noise_lacunarity : hint_range(-1.0, 1.0, 0.01) = 0.0;
+
 uniform sampler2DArray u_top_texture_array : source_color, filter_nearest_mipmap;
 uniform sampler2DArray u_top_normal_array : hint_roughness_normal, filter_nearest_mipmap;
 group_uniforms;
+
+group_uniforms texture_blending;
+uniform float layer_normal_strength : hint_range(-0.2, 0.2, 0.01) = 0.0;
+uniform float layer_depth_strength : hint_range(0.0, 0.2, 0.01) = 0.0;
+uniform float layer_noise_strength : hint_range(-0.2, 0.2, 0.01) = 0.0;
+uniform float layer_blend_smoothness : hint_range(0.0, 3.0, 0.01) = 0.4;
 
 uniform sampler2D u_blend_noise2d : source_color; // Used to perturb top-side texture mix
 uniform float u_blend_noise_scale_coarse = 0.001;
 uniform float u_blend_noise_scale_medium = 0.01;
 uniform float u_blend_noise_scale_fine = 0.1;
+group_uniforms;
 
 uniform sampler2DArray u_test_uv_texture : source_color, filter_nearest_mipmap; // You can plug in a checkered texture to test UV mapping
 
@@ -97,23 +104,25 @@ void vertex() {
 	// Weights must be in [0..1] so we divide them
     v_material_weights = decode_8bit_vec4(CUSTOM1.y) / 255.0;
 
+
 	//This is a crucial step because non-normalized weights cause trouble
 	//The smol number is to ensure there's never a divide by zero
 	v_material_weights /= v_material_weights.x + v_material_weights.y + v_material_weights.z + v_material_weights.w + 0.000001;
 
 	//Automaterial function for side texture goes here
 	vec3 side_weights;
-	v_auto_side_indices = get_auto_top_index(v_world_pos, side_weights);
+	v_auto_side_indices = get_auto_side_index(v_world_pos, side_weights);
 	v_auto_side_weights = side_weights;
-
+	
 	//normalize auto-material weights
 	v_auto_side_weights /= v_auto_side_weights.x+v_auto_side_weights.y+v_auto_side_weights.z+0.0001;
+
 
 	//Automaterial logic for top tex choice goes here
 	vec3 top_weights;
 	v_top_indices = get_top_index(v_world_pos, top_weights);
 	v_top_weights = top_weights;
-
+	
 	//commented out because not necessary in simple 3 weight example, but might be necessary w advanced func
 	//v_top_weights /= max(1.0, v_top_weights.x+v_top_weights.y+v_top_weights.z);
 }
@@ -165,10 +174,10 @@ void fragment() {
 			vec4 auto_nr1 = texture_array_triplanar_scaled(u_side_normal_array, world_pos, tr_signs, blending, v_auto_side_indices[1], u_side_uv_scales[int(v_auto_side_indices[1])]);
 			vec4 auto_nr2 = texture_array_triplanar_scaled(u_side_normal_array, world_pos, tr_signs, blending, v_auto_side_indices[2], u_side_uv_scales[int(v_auto_side_indices[2])]);
 
-			vec3 auto_weights = v_auto_side_weights;
+			vec3 auto_weights;
 
 			if (u_depth_blending_atlas){
-				get_depth_blended_weights3(v_auto_side_weights, vec3(auto_nr0.a, auto_nr1.a, auto_nr2.a), u_side_blend_strength);
+				auto_weights = get_depth_blended_weights3(v_auto_side_weights, vec3(auto_ab0.a, auto_ab1.a, auto_ab2.a), u_side_blend_strength);
 			}
 
 			ab[i] = auto_ab0 * auto_weights.x + auto_ab1 * auto_weights.y + auto_ab2 * auto_weights.z;
@@ -220,10 +229,11 @@ void fragment() {
 	vec3 top_weights = v_top_weights;
 
 	// Add noise to make grass/sand transition less boring
-	float perturb = (blend_noise_fine * 2.0 - 1.0)*0.2;
+	float perturb = ((blend_noise_fine+blend_noise*top_noise_lacunarity) * 2.0 - 1.0)*top_noise_strength;
 
-	top_weights.x = min(top_weights.x+perturb, 1.0);
-	top_weights.z = max(top_weights.z-perturb, 0.0);
+	top_weights.x = clamp(top_weights.x+perturb, 0.0, 1.0);
+	top_weights.y = clamp(top_weights.y-perturb, 0.0, 1.0);
+	top_weights.z = clamp(top_weights.z-perturb, 0.0, 1.0);
 
 	top_weights /= (top_weights.x + top_weights.y + top_weights.z);
 
@@ -287,8 +297,8 @@ void fragment() {
 
 	// Now blend between top and side textures
 
-	float topness_midlevel = 0.5+top_normal_affect+top_depth_affect*(height_side-height_top)+top_noise_affect*blend_noise_fine;
-	float topness_smoothness = blend_smoothness * 0.1;
+	float topness_midlevel = 0.5+layer_normal_strength+layer_depth_strength*(height_side-height_top)+layer_noise_strength*blend_noise_fine;
+	float topness_smoothness = layer_blend_smoothness * 0.1;
 	float topness_min = topness_midlevel - topness_smoothness;
 	float topness_max = topness_midlevel + topness_smoothness;
 	float topness = smoothstep(topness_min, topness_max, world_normal.y);
@@ -297,6 +307,7 @@ void fragment() {
 	topness *= top_weights.x+top_weights.y+top_weights.z;
 	topness *= max(0.0, auto_top_weight);
 
+	
 	if (u_depth_blending_layer){
 		vec2 top_weight = get_depth_blended_weights2(vec2(topness, 1.0-topness), vec2(height_top, height_side), u_layer_blend_strength);
 		ALBEDO = albedo_top * top_weight.x + albedo_side * top_weight.y;
@@ -334,7 +345,7 @@ void fragment() {
 	#ifdef DEBUG_MODE_VERTEX
 
 			ALBEDO = COLOR.rgb;
-			NORMAL = world_normal;
+			NORMAL = (VIEW_MATRIX*vec4(world_normal, 0.0)).xyz;
 			NORMAL_MAP_DEPTH = 0.0;
 			ROUGHNESS = 0.7;
 	#endif
