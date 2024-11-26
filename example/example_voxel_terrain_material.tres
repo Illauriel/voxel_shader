@@ -1,11 +1,8 @@
-[gd_resource type="ShaderMaterial" load_steps=12 format=3 uid="uid://fv5hfb4vs442"]
+[gd_resource type="ShaderMaterial" load_steps=9 format=3 uid="uid://fv5hfb4vs442"]
 
 [ext_resource type="Shader" path="res://addons/voxel_shader/voxel_world_materials.gdshader" id="1_wfcxj"]
 [ext_resource type="CompressedTexture2DArray" uid="uid://c4ygamkts0inx" path="res://example/textures/albedo_atlas_side_real.png" id="2_1bifh"]
-[ext_resource type="CompressedTexture2DArray" uid="uid://bv2wqavb2wrrd" path="res://temp/Tonemapp1.png" id="3_7n2bo"]
-[ext_resource type="CompressedTexture2DArray" uid="uid://8aheclck7gdq" path="res://temp/W_Slope_0_25_50.png" id="3_km0i0"]
 [ext_resource type="CompressedTexture2DArray" uid="uid://d15u4r7kxiaon" path="res://example/textures/normal_atlas_side_real.png" id="3_ofxah"]
-[ext_resource type="CompressedTexture2DArray" uid="uid://6lkyo7btrtp8" path="res://temp/map_lul.png" id="3_qr707"]
 [ext_resource type="CompressedTexture2DArray" uid="uid://djjcraxs24421" path="res://example/textures/normal_atlas_top_real.png" id="4_hw7ch"]
 [ext_resource type="CompressedTexture2DArray" uid="uid://524axe1gxgd6" path="res://example/textures/CustomUVChecker_byValle_1K.png" id="4_q674u"]
 [ext_resource type="CompressedTexture2DArray" uid="uid://w1g8ehtrjqj4" path="res://example/textures/albedo_atlas_top_real.png" id="5_4p22t"]
@@ -35,17 +32,6 @@ shader_parameter/u_depth_blending_layer = true
 shader_parameter/u_top_blend_strength = 0.151
 shader_parameter/u_side_blend_strength = 0.171
 shader_parameter/u_layer_blend_strength = 0.001
-shader_parameter/world_size = 1024.0
-shader_parameter/chunk_size = 512.0
-shader_parameter/heightmap_range = 70.0
-shader_parameter/heightmap_minimum = 16.0
-shader_parameter/soil_base_height = 9.59
-shader_parameter/cliff_base_height = 27.0
-shader_parameter/cliff_factor = 7.0
-shader_parameter/beach_factor = 91.595
-shader_parameter/layer_smoothness = 3.0
-shader_parameter/slope_map = ExtResource("3_km0i0")
-shader_parameter/height_map = ExtResource("3_qr707")
 shader_parameter/u_side_uv_scales = PackedFloat32Array(0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3)
 shader_parameter/u_side_roughness_scale = 1.5
 shader_parameter/u_side_albedo_array = ExtResource("2_1bifh")
@@ -68,4 +54,3 @@ shader_parameter/u_specular = 0.3
 shader_parameter/u_normalmap_depth = 1.0
 shader_parameter/u_triplanar_sharpness = 8.0
 shader_parameter/u_test_uv_texture = ExtResource("4_q674u")
-shader_parameter/tintmap = ExtResource("3_7n2bo")
